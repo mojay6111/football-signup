@@ -1,24 +1,21 @@
-// Import required modules
+// ---------------------- Imports ----------------------
 const express = require("express");
 const bodyParser = require("body-parser");
 const { MongoClient } = require("mongodb");
 
-// Create Express app
+// ---------------------- App Setup ----------------------
 const app = express();
 const port = 3000;
 
-// Serve static files (CSS, JS, HTML if needed)
-app.use(express.static(__dirname));
-
-// Middleware to parse JSON and form data
+// Middleware
+app.use(express.static(__dirname)); // Serve HTML/CSS/JS
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// MongoDB connection URL
-const uri = "mongodb://localhost:27017";
-const client = new MongoClient(uri);
+// ---------------------- Local MongoDB Connection ----------------------
+const localUri = "mongodb://localhost:27017";
+const client = new MongoClient(localUri);
 
-// Connect to database
 let usersCollection;
 
 client
@@ -26,29 +23,31 @@ client
   .then(() => {
     const db = client.db("football_signup");
     usersCollection = db.collection("users");
-    console.log("Connected to MongoDB");
+    console.log("Connected to local MongoDB");
   })
-  .catch((err) => console.error(err));
+  .catch((err) => console.error("MongoDB connection error:", err));
 
-// Simple route to check server
+// ---------------------- Routes ----------------------
+
+// Test route
 app.get("/", (req, res) => {
   res.send("Football Signup Server is running!");
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+// Serve HTML pages
+app.get("/signup", (req, res) => res.sendFile(__dirname + "/signup.html"));
+app.get("/admin", (req, res) => res.sendFile(__dirname + "/admin.html"));
+
+// Invitation page
+app.get("/invitation", (req, res) => {
+  res.send(
+    "<h1>Welcome to the Football Match!</h1><p>Thank you for signing up.</p>"
+  );
 });
 
-app.get("/signup", (req, res) => {
-  res.sendFile(__dirname + "/signup.html");
-});
+// ---------------------- CRUD Routes ----------------------
 
-app.get("/admin", (req, res) => {
-  res.sendFile(__dirname + "/admin.html");
-});
-
-// Route to handle signup form submission
+// CREATE - Signup
 app.post("/signup", async (req, res) => {
   try {
     const { fullname, email, phone } = req.body;
@@ -57,51 +56,39 @@ app.post("/signup", async (req, res) => {
       return res.status(400).send("All fields are required.");
     }
 
-    // Check if email already exists
+    // Check for duplicate email
     const existingUser = await usersCollection.findOne({ email });
     if (existingUser) {
       return res.status(400).send("Email already registered");
     }
 
-    // Insert user
-    const result = await usersCollection.insertOne({
-      fullname,
-      email,
-      phone,
-      createdAt: new Date(),
-    });
+    const user = { fullname, email, phone, createdAt: new Date() };
 
-    console.log("New user inserted:", result.insertedId);
+    await usersCollection.insertOne(user);
+
+    console.log("New user inserted:", email);
     res.redirect("/invitation");
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error saving user.");
+    console.error("Error inserting user:", err);
+    res.status(500).send("Error saving user");
   }
 });
 
-// Invitation page
-app.get("/invitation", (req, res) => {
-  res.send(
-    "<h1>Welcome to the Football Match!</h1><p>Thank you for signing up.</p>",
-  );
-});
-
-// Get all users
+// READ - Get all users
 app.get("/users", async (req, res) => {
   try {
     const users = await usersCollection.find().toArray();
-    res.json(users); // returns JSON array of users
+    res.json(users);
   } catch (err) {
     console.error(err);
     res.status(500).send("Error fetching users.");
   }
 });
 
-// Update user by email
+// UPDATE - Update user by email
 app.put("/users", async (req, res) => {
   try {
     const { email, fullname, phone } = req.body;
-
     if (!email) return res.status(400).send("Email is required");
 
     const updateData = {};
@@ -110,7 +97,7 @@ app.put("/users", async (req, res) => {
 
     const result = await usersCollection.updateOne(
       { email },
-      { $set: updateData },
+      { $set: updateData }
     );
 
     res.send(result.modifiedCount ? "User updated" : "No user found");
@@ -120,16 +107,22 @@ app.put("/users", async (req, res) => {
   }
 });
 
-// Delete user by email
+// DELETE - Delete user by email
 app.delete("/users", async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).send("Email is required");
 
     const result = await usersCollection.deleteOne({ email });
+
     res.send(result.deletedCount ? "User deleted" : "No user found");
   } catch (err) {
     console.error(err);
     res.status(500).send("Error deleting user");
   }
+});
+
+// ---------------------- Start Server ----------------------
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
 });

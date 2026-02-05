@@ -24,7 +24,11 @@
     <br /><br />
 
     <label for="sortSelect">Sort by Time: </label>
-    <select id="sortSelect" title="Sort users by signup time" onchange="loadUsers()">
+    <select
+      id="sortSelect"
+      title="Sort users by signup time"
+      onchange="loadUsers()"
+    >
       <option value="desc">Newest First</option>
       <option value="asc">Oldest First</option>
     </select>
@@ -40,6 +44,13 @@
       </tr>
     </table>
 
+    <div id="pagination">
+      <button id="prevBtn" onclick="changePage(-1)">Previous</button>
+      <span id="pageInfo">Page 1</span>
+      <button id="nextBtn" onclick="changePage(1)">Next</button>
+    </div>
+    <br />
+
     <!-- Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
 
@@ -52,13 +63,22 @@
 
     <script>
       const socket = io();
+      let currentPage = 1;
+      const pageSize = 10; // users per page
+      let totalUsers = 0;
 
       // ================= LOAD USERS =================
       async function loadUsers() {
         const search = document.getElementById("searchInput").value;
         const sortOrder = document.getElementById("sortSelect").value;
-        const res = await fetch("/users?search=" + search);
-        const users = await res.json();
+
+        const res = await fetch(
+          `/users?search=${search}&sort=${sortOrder}&page=${currentPage}&limit=${pageSize}`,
+        );
+        const data = await res.json();
+
+        const users = data.users;
+        totalUsers = data.total;
 
         const table = document.getElementById("usersTable");
         table.innerHTML = `
@@ -73,19 +93,26 @@
 
         users.forEach((user) => {
           const row = table.insertRow();
-
           row.insertCell(0).innerText = user.fullname;
           row.insertCell(1).innerText = user.email;
           row.insertCell(2).innerText = user.phone;
           row.insertCell(3).innerText = new Date(
             user.createdAt,
           ).toLocaleString();
-
           row.insertCell(4).innerHTML = `
-      <button onclick="editUser('${user.email}')">Edit</button>
-      <button onclick="deleteUser('${user.email}')">Delete</button>
+      <button onclick='deleteUser("${user.email}")'>Delete</button>
+      <button onclick='editUser("${user.email}")'>Edit</button>
     `;
         });
+
+        document.getElementById("pageInfo").innerText = `Page ${currentPage}`;
+        document.getElementById("prevBtn").disabled = currentPage === 1;
+        document.getElementById("nextBtn").disabled =
+          currentPage * pageSize >= totalUsers;
+      }
+      function changePage(delta) {
+        currentPage += delta;
+        loadUsers();
       }
 
       // ================= DELETE =================

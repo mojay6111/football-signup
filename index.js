@@ -114,46 +114,33 @@ app.get("/users", async (req, res) => {
   try {
     const search = req.query.search || "";
     const sortOrder = req.query.sort === "asc" ? 1 : -1;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
     const query = {
       $or: [
         { fullname: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } }
-      ]
+        { phone: { $regex: search, $options: "i" } },
+      ],
     };
+
+    const total = await usersCollection.countDocuments(query);
 
     const users = await usersCollection
       .find(query)
       .sort({ createdAt: sortOrder })
+      .skip(skip)
+      .limit(limit)
       .toArray();
 
-    res.json(users);
+    res.json({ users, total });
   } catch (err) {
     console.error(err);
     res.status(500).send("Error fetching users");
   }
 });
-
-
-app.get("/login", (req, res) => {
-  res.sendFile(__dirname + "/login.html");
-});
-
-app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-
-  const admin = await adminsCollection.findOne({ username, password });
-
-  if (!admin) {
-    return res.send("Invalid credentials");
-  }
-
-  req.session.admin = true;
-  res.redirect("/admin");
-});
-
-
 
 // UPDATE - Update user by email
 app.put("/users", async (req, res) => {

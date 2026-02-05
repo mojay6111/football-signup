@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Admin Panel</title>
+  </head>
+  <body>
+    <h2>Football Match Signups</h2>
+    <table border="1" id="usersTable">
+      <tr>
+        <th>Full Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Actions</th>
+      </tr>
+    </table>
+
+    <script>
+      async function loadUsers() {
+        const res = await fetch("/users");
+        const users = await res.json();
+
+        const table = document.getElementById("usersTable");
+        // Clear existing rows except header
+        table.innerHTML = `
+        <tr>
+          <th>Full Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Actions</th>
+        </tr>
+      `;
+
+        users.forEach((user) => {
+          const row = table.insertRow();
+          row.insertCell(0).innerText = user.fullname;
+          row.insertCell(1).innerText = user.email;
+          row.insertCell(2).innerText = user.phone;
+          row.insertCell(3).innerHTML = `
+          <button onclick='deleteUser("${user.email}")'>Delete</button>
+          <button onclick='editUser("${user.email}")'>Edit</button>
+        `;
+        });
+      }
+
+      async function deleteUser(email) {
+        await fetch("/users", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        loadUsers();
+      }
+
+      async function editUser(email) {
+        const newFullname = prompt("Enter new full name:");
+        const newPhone = prompt("Enter new phone number:");
+
+        if (!newFullname && !newPhone) return;
+
+        const data = { email };
+        if (newFullname) data.fullname = newFullname;
+        if (newPhone) data.phone = newPhone;
+
+        await fetch("/users", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        loadUsers();
+      }
+
+      loadUsers();
+    </script>
+  </body>
+</html>

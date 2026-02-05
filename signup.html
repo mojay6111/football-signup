@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Football Match Signup</title>
+  </head>
+  <body>
+    <h2>Signup for Football Match</h2>
+    <form id="signupForm" action="http://localhost:3000/signup" method="POST">
+      <label for="fullname">Full Name:</label>
+      <input
+        type="text"
+        id="fullname"
+        name="fullname"
+        required
+        minlength="3"
+      /><br /><br />
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" required /><br /><br />
+      <label for="phone">Phone:</label>
+      <input
+        type="text"
+        id="phone"
+        name="phone"
+        required
+        pattern="[0-9]{10}"
+      /><br /><br />
+      <button type="submit">Sign Up</button>
+    </form>
+    <p id="message"></p>
+
+    <script>
+      const form = document.getElementById("signupForm");
+      const message = document.getElementById("message");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const data = {
+          fullname: form.fullname.value,
+          email: form.email.value,
+          phone: form.phone.value,
+        };
+
+        const response = await fetch("/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        if (response.ok) {
+          message.innerText = "Signup successful! See you at the match!";
+          form.reset();
+        } else {
+          const text = await response.text();
+          message.innerText = text;
+        }
+
+        if (response.redirected) {
+          window.location.href = response.url;
+        } else {
+          const text = await response.text();
+          message.innerText = text;
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -17,7 +17,12 @@
       </tr>
     </table>
 
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
     <script>
+      const socket = io(); // Connect to server
+
+      // Load users from server
       async function loadUsers() {
         const res = await fetch("/users");
         const users = await res.json();
@@ -25,13 +30,13 @@
         const table = document.getElementById("usersTable");
         // Clear existing rows except header
         table.innerHTML = `
-        <tr>
-          <th>Full Name</th>
-          <th>Email</th>
-          <th>Phone</th>
-          <th>Actions</th>
-        </tr>
-      `;
+          <tr>
+            <th>Full Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Actions</th>
+          </tr>
+        `;
 
         users.forEach((user) => {
           const row = table.insertRow();
@@ -39,21 +44,22 @@
           row.insertCell(1).innerText = user.email;
           row.insertCell(2).innerText = user.phone;
           row.insertCell(3).innerHTML = `
-          <button onclick='deleteUser("${user.email}")'>Delete</button>
-          <button onclick='editUser("${user.email}")'>Edit</button>
-        `;
+            <button onclick='deleteUser("${user.email}")'>Delete</button>
+            <button onclick='editUser("${user.email}")'>Edit</button>
+          `;
         });
       }
 
+      // DELETE user
       async function deleteUser(email) {
         await fetch("/users", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email }),
         });
-        loadUsers();
       }
 
+      // EDIT user
       async function editUser(email) {
         const newFullname = prompt("Enter new full name:");
         const newPhone = prompt("Enter new phone number:");
@@ -69,11 +75,16 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
-
-        loadUsers();
       }
 
+      // Initial load
       loadUsers();
+
+      // ---------------------- Live Updates ----------------------
+      // Reload table whenever server emits an event
+      socket.on("newUser", loadUsers);
+      socket.on("updateUser", loadUsers);
+      socket.on("deleteUser", loadUsers);
     </script>
   </body>
 </html>

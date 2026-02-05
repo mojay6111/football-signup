@@ -2,10 +2,16 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const { MongoClient } = require("mongodb");
+const http = require("http");
 
 // ---------------------- App Setup ----------------------
 const app = express();
 const port = 3000;
+
+// Wrap Express in HTTP server for Socket.IO
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server);
 
 // Middleware
 app.use(express.static(__dirname)); // Serve HTML/CSS/JS
@@ -26,6 +32,15 @@ client
     console.log("Connected to local MongoDB");
   })
   .catch((err) => console.error("MongoDB connection error:", err));
+
+// ---------------------- Socket.IO ----------------------
+io.on("connection", (socket) => {
+  console.log("A client connected");
+
+  socket.on("disconnect", () => {
+    console.log("A client disconnected");
+  });
+});
 
 // ---------------------- Routes ----------------------
 
@@ -56,7 +71,7 @@ app.post("/signup", async (req, res) => {
       return res.status(400).send("All fields are required.");
     }
 
-    // Check for duplicate email
+    // Check duplicate email
     const existingUser = await usersCollection.findOne({ email });
     if (existingUser) {
       return res.status(400).send("Email already registered");
@@ -65,6 +80,9 @@ app.post("/signup", async (req, res) => {
     const user = { fullname, email, phone, createdAt: new Date() };
 
     await usersCollection.insertOne(user);
+
+    // Emit live event
+    io.emit("newUser", user);
 
     console.log("New user inserted:", email);
     res.redirect("/invitation");
@@ -100,7 +118,12 @@ app.put("/users", async (req, res) => {
       { $set: updateData }
     );
 
-    res.send(result.modifiedCount ? "User updated" : "No user found");
+    if (result.modifiedCount) {
+      io.emit("updateUser", { email, ...updateData });
+      res.send("User updated");
+    } else {
+      res.send("No user found");
+    }
   } catch (err) {
     console.error(err);
     res.status(500).send("Error updating user");
@@ -115,7 +138,12 @@ app.delete("/users", async (req, res) => {
 
     const result = await usersCollection.deleteOne({ email });
 
-    res.send(result.deletedCount ? "User deleted" : "No user found");
+    if (result.deletedCount) {
+      io.emit("deleteUser", email);
+      res.send("User deleted");
+    } else {
+      res.send("No user found");
+    }
   } catch (err) {
     console.error(err);
     res.status(500).send("Error deleting user");
@@ -123,6 +151,6 @@ app.delete("/users", async (req, res) => {
 });
 
 // ---------------------- Start Server ----------------------
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });

@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const { MongoClient } = require("mongodb");
 const http = require("http");
+const session = require("express-session");
 
 // ---------------------- App Setup ----------------------
 const app = express();
@@ -18,17 +19,27 @@ app.use(express.static(__dirname)); // Serve HTML/CSS/JS
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+app.use(
+  session({
+    secret: "football-secret-key",
+    resave: false,
+    saveUninitialized: false,
+  }),
+);
+
 // ---------------------- Local MongoDB Connection ----------------------
 const localUri = "mongodb://localhost:27017";
 const client = new MongoClient(localUri);
 
 let usersCollection;
+let adminsCollection;
 
 client
   .connect()
   .then(() => {
     const db = client.db("football_signup");
     usersCollection = db.collection("users");
+    adminsCollection = db.collection("admins");
     console.log("Connected to local MongoDB");
   })
   .catch((err) => console.error("MongoDB connection error:", err));
@@ -51,12 +62,18 @@ app.get("/", (req, res) => {
 
 // Serve HTML pages
 app.get("/signup", (req, res) => res.sendFile(__dirname + "/signup.html"));
-app.get("/admin", (req, res) => res.sendFile(__dirname + "/admin.html"));
+app.get("/admin", (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/login");
+  }
+
+  res.sendFile(__dirname + "/admin.html");
+});
 
 // Invitation page
 app.get("/invitation", (req, res) => {
   res.send(
-    "<h1>Welcome to the Football Match!</h1><p>Thank you for signing up.</p>"
+    "<h1>Welcome to the Football Match!</h1><p>Thank you for signing up.</p>",
   );
 });
 
@@ -95,13 +112,48 @@ app.post("/signup", async (req, res) => {
 // READ - Get all users
 app.get("/users", async (req, res) => {
   try {
-    const users = await usersCollection.find().toArray();
+    const search = req.query.search || "";
+    const sortOrder = req.query.sort === "asc" ? 1 : -1;
+
+    const query = {
+      $or: [
+        { fullname: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } }
+      ]
+    };
+
+    const users = await usersCollection
+      .find(query)
+      .sort({ createdAt: sortOrder })
+      .toArray();
+
     res.json(users);
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error fetching users.");
+    res.status(500).send("Error fetching users");
   }
 });
+
+
+app.get("/login", (req, res) => {
+  res.sendFile(__dirname + "/login.html");
+});
+
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+
+  const admin = await adminsCollection.findOne({ username, password });
+
+  if (!admin) {
+    return res.send("Invalid credentials");
+  }
+
+  req.session.admin = true;
+  res.redirect("/admin");
+});
+
+
 
 // UPDATE - Update user by email
 app.put("/users", async (req, res) => {
@@ -115,7 +167,7 @@ app.put("/users", async (req, res) => {
 
     const result = await usersCollection.updateOne(
       { email },
-      { $set: updateData }
+      { $set: updateData },
     );
 
     if (result.modifiedCount) {

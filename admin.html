@@ -1,51 +1,67 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="style.css" />
-  <title>Admin Panel</title>
-</head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Admin Panel</title>
+  </head>
 
-<body>
+  <body>
+    <h2>Football Match Signups</h2>
 
-<h2>Football Match Signups</h2>
+    <div style="margin-bottom: 10px">
+      <button onclick="downloadExcel()">Download Excel</button>
+      <button onclick="downloadPDF()">Download PDF</button>
+    </div>
 
-<div style="margin-bottom:10px;">
-  <button onclick="downloadExcel()">Download Excel</button>
-  <button onclick="downloadPDF()">Download PDF</button>
-</div>
+    <input
+      type="text"
+      id="searchInput"
+      placeholder="Search by name, email, or phone..."
+      oninput="loadUsers()"
+    />
+    <br /><br />
 
-<table border="1" id="usersTable">
-  <tr>
-    <th>Full Name</th>
-    <th>Email</th>
-    <th>Phone</th>
-    <th>Signup Time</th>
-    <th>Actions</th>
-  </tr>
-</table>
+    <label for="sortSelect">Sort by Time: </label>
+    <select id="sortSelect" title="Sort users by signup time" onchange="loadUsers()">
+      <option value="desc">Newest First</option>
+      <option value="asc">Oldest First</option>
+    </select>
+    <br /><br />
 
-<!-- Socket.IO -->
-<script src="/socket.io/socket.io.js"></script>
+    <table border="1" id="usersTable">
+      <tr>
+        <th>Full Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Signup Time</th>
+        <th>Actions</th>
+      </tr>
+    </table>
 
-<!-- Excel Library -->
-<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
 
-<!-- PDF Libraries -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <!-- Excel Library -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
-<script>
-const socket = io();
+    <!-- PDF Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
-// ================= LOAD USERS =================
-async function loadUsers() {
-  const res = await fetch("/users");
-  const users = await res.json();
+    <script>
+      const socket = io();
 
-  const table = document.getElementById("usersTable");
-  table.innerHTML = `
+      // ================= LOAD USERS =================
+      async function loadUsers() {
+        const search = document.getElementById("searchInput").value;
+        const sortOrder = document.getElementById("sortSelect").value;
+        const res = await fetch("/users?search=" + search);
+        const users = await res.json();
+
+        const table = document.getElementById("usersTable");
+        table.innerHTML = `
     <tr>
       <th>Full Name</th>
       <th>Email</th>
@@ -55,78 +71,78 @@ async function loadUsers() {
     </tr>
   `;
 
-  users.forEach(user => {
-    const row = table.insertRow();
+        users.forEach((user) => {
+          const row = table.insertRow();
 
-    row.insertCell(0).innerText = user.fullname;
-    row.insertCell(1).innerText = user.email;
-    row.insertCell(2).innerText = user.phone;
-    row.insertCell(3).innerText =
-      new Date(user.createdAt).toLocaleString();
+          row.insertCell(0).innerText = user.fullname;
+          row.insertCell(1).innerText = user.email;
+          row.insertCell(2).innerText = user.phone;
+          row.insertCell(3).innerText = new Date(
+            user.createdAt,
+          ).toLocaleString();
 
-    row.insertCell(4).innerHTML = `
+          row.insertCell(4).innerHTML = `
       <button onclick="editUser('${user.email}')">Edit</button>
       <button onclick="deleteUser('${user.email}')">Delete</button>
     `;
-  });
-}
+        });
+      }
 
-// ================= DELETE =================
-async function deleteUser(email) {
-  await fetch("/users", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
-  });
-}
+      // ================= DELETE =================
+      async function deleteUser(email) {
+        await fetch("/users", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+      }
 
-// ================= EDIT =================
-async function editUser(email) {
-  const newFullname = prompt("Enter new full name:");
-  const newPhone = prompt("Enter new phone number:");
+      // ================= EDIT =================
+      async function editUser(email) {
+        const newFullname = prompt("Enter new full name:");
+        const newPhone = prompt("Enter new phone number:");
 
-  if (!newFullname && !newPhone) return;
+        if (!newFullname && !newPhone) return;
 
-  const data = { email };
-  if (newFullname) data.fullname = newFullname;
-  if (newPhone) data.phone = newPhone;
+        const data = { email };
+        if (newFullname) data.fullname = newFullname;
+        if (newPhone) data.phone = newPhone;
 
-  await fetch("/users", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
-}
+        await fetch("/users", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+      }
 
-// ================= LIVE UPDATES =================
-socket.on("newUser", loadUsers);
-socket.on("updateUser", loadUsers);
-socket.on("deleteUser", loadUsers);
+      // ================= LIVE UPDATES =================
+      socket.on("newUser", loadUsers);
+      socket.on("updateUser", loadUsers);
+      socket.on("deleteUser", loadUsers);
 
-// ================= EXCEL DOWNLOAD =================
-function downloadExcel() {
-  const table = document.getElementById("usersTable");
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.table_to_sheet(table);
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Signups");
-  XLSX.writeFile(workbook, "FootballSignups.xlsx");
-}
+      // ================= EXCEL DOWNLOAD =================
+      function downloadExcel() {
+        const table = document.getElementById("usersTable");
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.table_to_sheet(table);
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Signups");
+        XLSX.writeFile(workbook, "FootballSignups.xlsx");
+      }
 
-// ================= PDF DOWNLOAD =================
-function downloadPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.text("Football Match Signups", 14, 15);
-  doc.autoTable({
-    html: "#usersTable",
-    startY: 20
-  });
-  doc.save("FootballSignups.pdf");
-}
+      // ================= PDF DOWNLOAD =================
+      function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text("Football Match Signups", 14, 15);
+        doc.autoTable({
+          html: "#usersTable",
+          startY: 20,
+        });
+        doc.save("FootballSignups.pdf");
+      }
 
-// Initial Load
-loadUsers();
-</script>
-
-</body>
+      // Initial Load
+      loadUsers();
+    </script>
+  </body>
 </html>

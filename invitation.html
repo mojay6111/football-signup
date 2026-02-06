@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Signup Successful</title>
+  </head>
+  <body>
+    <div class="container">
+      <div
+        class="card"
+        style="max-width: 600px; margin: 50px auto; text-align: center"
+      >
+        <div style="font-size: 4rem; margin-bottom: 20px">🎉</div>
+
+        <h1>Welcome to the Match!</h1>
+
+        <div
+          class="alert alert-success"
+          style="margin: 25px 0; padding: 20px; font-size: 1.1rem"
+        >
+          ✓ Your signup was successful! We're excited to have you join us.
+        </div>
+
+        <p
+          style="
+            font-size: 1.05rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            opacity: 0.9;
+          "
+        >
+          Thank you for registering for the Football Match. We've received your
+          information and you're all set for the upcoming event. Make sure to
+          mark your calendar!
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 15px">
+          <div
+            style="
+              background: rgba(16, 185, 129, 0.1);
+              padding: 15px;
+              border-radius: 12px;
+              text-align: left;
+            "
+          >
+            <p style="font-weight: 600; margin-bottom: 8px">📋 What's Next?</p>
+            <ul style="margin: 0; padding-left: 20px; opacity: 0.8">
+              <li>Confirm your details are correct</li>
+              <li>Prepare your gear and equipment</li>
+              <li>Arrive on time for the match</li>
+              <li>Have fun and enjoy the game!</li>
+            </ul>
+          </div>
+
+          <div style="display: flex; gap: 15px; flex-wrap: wrap">
+            <button
+              onclick="window.location.href = '/signup'"
+              class="secondary"
+              style="flex: 1; min-width: 150px"
+            >
+              ➕ Register Another Player
+            </button>
+            <button
+              onclick="window.location.href = '/login'"
+              class="secondary"
+              style="flex: 1; min-width: 150px"
+            >
+              🔐 Admin Panel
+            </button>
+          </div>
+        </div>
+
+        <p style="margin-top: 40px; opacity: 0.6; font-size: 0.9rem">
+          Questions? Contact the organizers for more information about the
+          match.
+        </p>
+      </div>
+    </div>
+
+    <script>
+      // Load theme preference
+      if (localStorage.getItem("theme") === "dark") {
+        document.body.classList.add("dark");
+      }
+    </script>
+  </body>
+</html>

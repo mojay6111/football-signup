@@ -97,9 +97,7 @@ app.post("/login", async (req, res) => {
 
 // Invitation page
 app.get("/invitation", (req, res) => {
-  res.send(
-    "<h1>Welcome to the Football Match!</h1><p>Thank you for signing up.</p>",
-  );
+  res.sendFile(__dirname + "/invitation.html");
 });
 
 // ---------------------- CRUD Routes ----------------------

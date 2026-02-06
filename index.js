@@ -61,6 +61,7 @@ app.get("/", (req, res) => {
 });
 
 // Serve HTML pages
+app.get("/login", (req, res) => res.sendFile(__dirname + "/login.html"));
 app.get("/signup", (req, res) => res.sendFile(__dirname + "/signup.html"));
 app.get("/admin", (req, res) => {
   if (!req.session.admin) {
@@ -68,6 +69,30 @@ app.get("/admin", (req, res) => {
   }
 
   res.sendFile(__dirname + "/admin.html");
+});
+
+// Login route
+app.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).send("Username and password are required");
+    }
+
+    // Check if admin exists
+    const admin = await adminsCollection.findOne({ username, password });
+
+    if (!admin) {
+      return res.status(401).send("Invalid credentials");
+    }
+
+    req.session.admin = admin;
+    res.redirect("/admin");
+  } catch (err) {
+    console.error("Error during login:", err);
+    res.status(500).send("Error during login");
+  }
 });
 
 // Invitation page

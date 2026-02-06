@@ -8,48 +8,75 @@
   </head>
 
   <body>
-    <h2>Football Match Signups</h2>
+    <div class="container">
+      <!-- Header & Navigation -->
+      <div class="card" style="margin-bottom: 30px">
+        <div class="navbar">
+          <div class="navbar-title">
+            <h2>⚽ Football Match Signups</h2>
+          </div>
+          <div class="navbar-actions">
+            <button id="themeBtn" onclick="toggleTheme()" class="secondary">
+              🌙 Dark Mode
+            </button>
+            <button onclick="downloadPDF()" class="secondary">📄 PDF</button>
+            <button onclick="downloadExcel()" class="secondary">
+              📊 Excel
+            </button>
+          </div>
+        </div>
+      </div>
 
-    <div style="margin-bottom: 10px">
-      <button onclick="downloadExcel()">Download Excel</button>
-      <button onclick="downloadPDF()">Download PDF</button>
+      <!-- Controls -->
+      <div class="card" style="margin-bottom: 20px">
+        <div class="controls">
+          <div class="search-box">
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="🔍 Search by name, email, or phone..."
+              oninput="loadUsers()"
+            />
+          </div>
+
+          <div class="sort-box">
+            <label for="sortSelect" style="white-space: nowrap">Sort by:</label>
+            <select
+              id="sortSelect"
+              title="Sort users by signup time"
+              onchange="loadUsers()"
+            >
+              <option value="desc">📅 Newest First</option>
+              <option value="asc">📅 Oldest First</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card">
+        <table id="usersTable">
+          <tr>
+            <th>Full Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Signup Time</th>
+            <th>Actions</th>
+          </tr>
+        </table>
+
+        <!-- Pagination -->
+        <div id="pagination">
+          <button id="prevBtn" onclick="changePage(-1)" class="secondary">
+            ← Previous
+          </button>
+          <span id="pageInfo">Page 1</span>
+          <button id="nextBtn" onclick="changePage(1)" class="secondary">
+            Next →
+          </button>
+        </div>
+      </div>
     </div>
-
-    <input
-      type="text"
-      id="searchInput"
-      placeholder="Search by name, email, or phone..."
-      oninput="loadUsers()"
-    />
-    <br /><br />
-
-    <label for="sortSelect">Sort by Time: </label>
-    <select
-      id="sortSelect"
-      title="Sort users by signup time"
-      onchange="loadUsers()"
-    >
-      <option value="desc">Newest First</option>
-      <option value="asc">Oldest First</option>
-    </select>
-    <br /><br />
-
-    <table border="1" id="usersTable">
-      <tr>
-        <th>Full Name</th>
-        <th>Email</th>
-        <th>Phone</th>
-        <th>Signup Time</th>
-        <th>Actions</th>
-      </tr>
-    </table>
-
-    <div id="pagination">
-      <button id="prevBtn" onclick="changePage(-1)">Previous</button>
-      <span id="pageInfo">Page 1</span>
-      <button id="nextBtn" onclick="changePage(1)">Next</button>
-    </div>
-    <br />
 
     <!-- Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
@@ -82,14 +109,14 @@
 
         const table = document.getElementById("usersTable");
         table.innerHTML = `
-    <tr>
-      <th>Full Name</th>
-      <th>Email</th>
-      <th>Phone</th>
-      <th>Signup Time</th>
-      <th>Actions</th>
-    </tr>
-  `;
+          <tr>
+            <th>Full Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Signup Time</th>
+            <th>Actions</th>
+          </tr>
+        `;
 
         users.forEach((user) => {
           const row = table.insertRow();
@@ -99,17 +126,24 @@
           row.insertCell(3).innerText = new Date(
             user.createdAt,
           ).toLocaleString();
-          row.insertCell(4).innerHTML = `
-      <button onclick='deleteUser("${user.email}")'>Delete</button>
-      <button onclick='editUser("${user.email}")'>Edit</button>
-    `;
+
+          const actionsCell = row.insertCell(4);
+          actionsCell.style.display = "flex";
+          actionsCell.style.gap = "8px";
+          actionsCell.style.flexWrap = "wrap";
+          actionsCell.innerHTML = `
+            <button onclick='editUser("${user.email}")' style="flex: 1; padding: 8px; font-size: 0.85rem;" class="secondary">✏️ Edit</button>
+            <button onclick='deleteUser("${user.email}")' style="flex: 1; padding: 8px; font-size: 0.85rem;" class="danger">🗑️ Delete</button>
+          `;
         });
 
-        document.getElementById("pageInfo").innerText = `Page ${currentPage}`;
+        document.getElementById("pageInfo").innerText =
+          `Page ${currentPage} of ${Math.ceil(totalUsers / pageSize)}`;
         document.getElementById("prevBtn").disabled = currentPage === 1;
         document.getElementById("nextBtn").disabled =
           currentPage * pageSize >= totalUsers;
       }
+
       function changePage(delta) {
         currentPage += delta;
         loadUsers();
@@ -117,11 +151,14 @@
 
       // ================= DELETE =================
       async function deleteUser(email) {
-        await fetch("/users", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
+        if (confirm(`Are you sure you want to delete ${email}?`)) {
+          const res = await fetch("/users", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+          loadUsers();
+        }
       }
 
       // ================= EDIT =================
@@ -140,6 +177,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
+        loadUsers();
       }
 
       // ================= LIVE UPDATES =================
@@ -166,6 +204,23 @@
           startY: 20,
         });
         doc.save("FootballSignups.pdf");
+      }
+
+      // ================= THEME TOGGLE =================
+      function toggleTheme() {
+        document.body.classList.toggle("dark");
+
+        const isDark = document.body.classList.contains("dark");
+        const themeBtn = document.getElementById("themeBtn");
+        themeBtn.innerText = isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
+
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+      }
+
+      // Load saved theme
+      if (localStorage.getItem("theme") === "dark") {
+        document.body.classList.add("dark");
+        document.getElementById("themeBtn").innerText = "☀️ Light Mode";
       }
 
       // Initial Load
